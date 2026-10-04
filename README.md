@@ -1,89 +1,58 @@
 # Emergency Vehicle Traffic Planner
 
-An emergency vehicle drives through a simulated city. It plans a route with
-A* search, adjusts for traffic and red lights using a few simple rules, and
-plans again if a road on its route gets closed.
+An emergency vehicle that finds the cheapest route through a city, accounts
+for traffic and red lights, and plans again when an accident closes a road
+on its way.
 
-Everything is classical AI (informed search plus rule-based reasoning), and the
-project uses only the Python standard library.
+It is classical AI: informed search (A*) plus simple rule-based decisions.
+No dependencies beyond the Python standard library.
 
-## Team
+## Features
 
-| Name | Roll number |
-| --- | --- |
-| Sarayu | AM.SC.U4AIE25062 |
-| Abhijith R Pillai | AM.SC.U4AIE25001 |
-| Achyuth Narayana | AM.SC.U4AIE25030 |
+* A* search written from scratch, with an admissible Manhattan-distance heuristic
+* Cost-aware routing: traffic and red lights change what the "best" route is
+* Dynamic re-planning when a road on the route is closed mid-trip
+* Four ready-made scenarios and a random city generator
+* Desktop GUI (`tkinter`) and a text interface that share the same simulation
 
-## The problem
+## Quick start
 
-Getting an ambulance somewhere fast takes more than finding the shortest
-road. A longer road with no traffic can be quicker, and a route that was
-good a minute ago is useless once an accident closes part of it.
-
-## How it works
-
-The vehicle (`agent.py`) repeats three steps until it arrives:
-
-1. **Perceive:** where am I, what is on the road ahead, is my route still usable?
-2. **Decide:** move, wait at a red light, re-plan, or stop.
-3. **Act:** drive one cell, or wait.
-
-The city (`environment.py`) is a grid. Each cell has a traffic level (clear,
-moderate, heavy), maybe a signal, and may be closed. The vehicle moves up,
-down, left or right, never diagonally.
-
-### Road costs (`rules.py`)
-
-| Situation | Cost of entering the cell |
-| --- | --- |
-| clear road | 1 |
-| moderate traffic | 3 |
-| heavy traffic | 5 |
-| red signal | +2 |
-| blocked | not usable |
-
-The rules are plain Python functions, so you can read them top to bottom.
-There is no rule engine.
-
-### A* search (`astar.py`)
-
-A* is written by hand with `heapq`. It expands the cell with the lowest
-`f = g + h`, where `g` is the cost so far and `h` is the Manhattan distance to
-the goal.
-
-Manhattan distance never overestimates here: each move costs at least 1 and
-diagonal moves are not allowed, so no path can beat it. That makes the
-heuristic admissible and the first route A* returns the cheapest one.
-
-### Re-planning
-
-If the road ahead closes, the agent notices on its next `perceive()`, sees
-that its route contains a blocked cell, and runs A* again from where it is
-standing.
-
-## Running it
-
-Python 3.8 or newer. Nothing to install.
+You need Python 3.8 or newer. Download or clone the repository, open a
+terminal in the project folder, and run:
 
 ```bash
-python gui.py                  # window with the grid
+python gui.py
 ```
 
-In the window, pick a scenario (or "Random city"), then press **Step** to
-advance one move or **Play** to watch it run. **Reset** starts the scenario
-again, with a new city if "Random city" is selected. The window opens
-maximised, the grid resizes with it, and **F11** toggles full screen
-(**Esc** leaves it).
+Pick a scenario, then press **Step** to move one cell or **Play** to watch the
+whole trip. On Linux, `tkinter` may need installing first
+(Debian/Ubuntu: `sudo apt install python3-tk`, Arch: `sudo pacman -S tk`).
 
-The map is drawn with small pictures: buildings and trees where there is no
-road, a barrier and cones where an accident closed a road, cars for traffic
-(one car moderate, two heavy), a traffic light for signals, a hospital cross
-for the destination and an ambulance for the vehicle. The panel on the right
-shows live counters and the same log the command line prints. On Linux,
-`tkinter` may need `sudo apt install python3-tk` (Arch: `sudo pacman -S tk`).
+## Usage
 
-Command line:
+### GUI
+
+| Control | What it does |
+| --- | --- |
+| Dropdown | choose one of the four scenarios, or "Random city" |
+| Reset | restart the scenario (a new city for "Random city") |
+| Step / Play | advance one move / animate the trip |
+| F11, Esc | toggle full screen, leave full screen |
+
+The grid resizes with the window. The panel on the right shows live counters
+and a log of what the vehicle decides.
+
+| Picture | Meaning |
+| --- | --- |
+| Buildings, trees | no road |
+| Barrier and cones | road closed by an accident |
+| One car / two cars | moderate / heavy traffic |
+| Traffic light | signal (red light adds waiting cost) |
+| Hospital cross | destination |
+| Ambulance | the vehicle |
+| Green line / blue dashed line | where it has driven / where it plans to go |
+
+### Command line
 
 ```bash
 python main.py                 # menu
@@ -95,8 +64,11 @@ python main.py --no-map        # text only
 python main.py --map-every 3   # also draw the map every 3 steps
 ```
 
-By default the map is drawn when a route is planned, when it is re-planned,
-and at the end.
+By default the ASCII map is drawn when a route is planned, when it is
+re-planned, and at the end. Symbols: `V` vehicle, `S` start, `D` destination,
+`#` no road, `X` closed, `> < ^ v` planned route, `*` driven, `~` moderate
+traffic, `%` heavy traffic, `R` / `G` red / green light. Row and column
+numbers on the map match the `(row,col)` coordinates in the log.
 
 ## Scenarios
 
@@ -118,24 +90,59 @@ Scenario 2 compares the chosen route with the shortest one:
 The shortest route is two moves shorter but costs twice as much once the
 heavy traffic is counted.
 
-## Reading the map
+### Example run (scenario 3)
 
 ```
-      0   1   2   3   4   5   6
-    +---+---+---+---+---+---+---+
-  0 | S | * | * | *~| * | . | # |
-    +---+---+---+---+---+---+---+
-  1 | . | . | # | . | V | # | . |
+Route found: 10 moves, cost 12, 26 cells searched, 0.14 ms
+    (0,0) -> (0,1) -> (0,2) -> (0,3) -> (0,4) -> (1,4) -> (2,4)
+    -> (2,5) -> (2,6) -> (3,6) -> (4,6)
+  Step  4  (0,3) -> (0,4)  cost 1  paid 6  left 6
+  Step  5  (0,4) -> (1,4)  cost 1  paid 7  left 5
+  [after step 5] an accident is reported ahead: road (2,5) is closed
+  !! Road (2,5) on the route is closed. Re-planning.
+  New route: 9 moves, cost 13, 22 cells searched, 0.10 ms
+    (1,4) -> (2,4) -> (2,3) -> (3,3) -> (4,3) -> (5,3) -> (5,4)
+    -> (5,5) -> (4,5) -> (4,6)
+  Step 12  (5,4)  waiting: red light at (5,5), changes to green
+  Step 15  (4,5) -> (4,6)  cost 1  paid 18  left 0
+  Arrived at (4,6).
 ```
 
-`V` vehicle, `S` start, `D` destination, `#` no road, `X` closed now,
-`> < ^ v` planned route, `*` already driven, `~` moderate traffic,
-`%` heavy traffic, `R` red light, `G` green light. Row and column numbers
-match the `(row,col)` coordinates in the log.
+## How it works
+
+The vehicle (`agent.py`) repeats three steps until it arrives:
+
+1. **Perceive:** where am I, what is ahead, is my route still usable?
+2. **Decide:** move, wait at a red light, re-plan, or stop.
+3. **Act:** drive one cell, or wait.
+
+The city (`environment.py`) is a grid. Each cell has a traffic level, maybe a
+signal, and may be closed. The vehicle moves up, down, left or right.
+
+**Road costs** (`rules.py`):
+
+| Situation | Cost of entering the cell |
+| --- | --- |
+| clear road | 1 |
+| moderate traffic | 3 |
+| heavy traffic | 5 |
+| red signal | +2 |
+| blocked | not usable |
+
+The rules are plain Python functions, so they can be read top to bottom.
+
+**A\* search** (`astar.py`) expands the cell with the lowest `f = g + h`, where
+`g` is the cost so far and `h` is the Manhattan distance to the goal. Each move
+costs at least 1 and diagonal moves are not allowed, so `h` never overestimates.
+That makes it admissible, and the first route A* returns is the cheapest.
+
+**Re-planning:** if a road ahead closes, the agent sees on its next
+`perceive()` that its route contains a blocked cell and runs A* again from where
+it is standing.
 
 ## Results
 
-Each run prints a summary. Typical numbers (times vary by machine):
+Numbers printed in each run's summary (times vary by machine):
 
 | Scenario | Moves | Cost paid | A* runs | Cells searched | Re-plans | Waits |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -144,27 +151,35 @@ Each run prints a summary. Typical numbers (times vary by machine):
 | 3 Dynamic Blockage | 14 | 18 | 2 | 48 | 1 | 1 |
 | 4 Multiple Blockages | 12 | 16 | 3 | 51 | 2 | 1 |
 
-"Cost paid" can be a little lower than the cost of the plan. A red light adds
-2 when planning, but in the simulation the light turns green after one wait,
-so the cell then costs 1.
+A red light adds 2 to the plan, but in the simulation it turns green after one
+wait, so the cell then costs 1. That is why "cost paid" can be slightly below
+the planned cost.
 
-## Files
+## Project structure
 
 ```
 main.py            menu and command line
-gui.py             tkinter window (same simulation, drawn on a grid)
-icons.py           the pictures used by the window
+gui.py             tkinter window
+icons.py           pictures used by the window
 environment.py     the city: grid, traffic, signals, closures
 rules.py           road costs and the IF/THEN rules
 astar.py           A* search and Manhattan heuristic
 agent.py           the vehicle: perceive, decide, act, re-plan
-simulation.py      scenarios, events, the step loop, the report
+simulation.py      scenarios, events, step loop, report
 visualization.py   ASCII map and text formatting
 ```
 
-## Possible extensions
+## Team
 
-* Re-plan when traffic gets worse, not only when a road closes.
-* Costs that change over time.
-* Several vehicles in one city.
-* Compare A* with Dijkstra and greedy search on cells searched.
+| Name | Roll number |
+| --- | --- |
+| Sarayu | AM.SC.U4AIE25062 |
+| Abhijith R Pillai | AM.SC.U4AIE25001 |
+| Achyuth Narayana | AM.SC.U4AIE25030 |
+
+## Ideas for extending it
+
+* Re-plan when traffic gets worse, not only when a road closes
+* Costs that change over time
+* Several vehicles in one city
+* Compare A* with Dijkstra and greedy search on cells searched
