@@ -176,10 +176,3 @@ visualization.py   ASCII map and text formatting
 | Sarayu | AM.SC.U4AIE25062 |
 | Abhijith R Pillai | AM.SC.U4AIE25001 |
 | Achyuth Narayana | AM.SC.U4AIE25030 |
-
-## Ideas for extending it
-
-* Re-plan when traffic gets worse, not only when a road closes
-* Costs that change over time
-* Several vehicles in one city
-* Compare A* with Dijkstra and greedy search on cells searched
